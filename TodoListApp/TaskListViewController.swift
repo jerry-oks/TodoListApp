@@ -7,10 +7,6 @@
 
 import UIKit
 
-protocol NewTaskViewControllerDelegate: AnyObject {
-    func reloadData()
-}
-
 final class TaskListViewController: UITableViewController {
     private var taskList: [TodoTask] = []
     private let cellID = "task"
@@ -24,9 +20,7 @@ final class TaskListViewController: UITableViewController {
     }
 
     @objc private func addNewTask() {
-        let newTaskVC = NewTaskViewController()
-        newTaskVC.delegate = self
-        present(newTaskVC, animated: true)
+        showAlert(withTitle: "New Task", andMessage: "What do you want to do?")
     }
     
     // MARK: - UITableViewDataSource
@@ -54,13 +48,32 @@ final class TaskListViewController: UITableViewController {
             print(error.localizedDescription)
         }
     }
-}
-
-// MARK: - NewTaskViewControllerDelegate
-extension TaskListViewController: NewTaskViewControllerDelegate {
-    func reloadData() {
-        fetchData()
-        tableView.reloadData()
+    
+    private func showAlert(withTitle title: String, andMessage message: String) {
+        let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+        let saveAction = UIAlertAction(title: "Save Task", style: .default) { [unowned self] _ in
+            guard let task = alert.textFields?.first?.text, !task.isEmpty else { return }
+            save(task)
+        }
+        let cancelAction = UIAlertAction(title: "Cancel", style: .destructive)
+        alert.addAction(saveAction)
+        alert.addAction(cancelAction)
+        alert.addTextField { textField in
+            textField.placeholder = "New Task"
+        }
+        present(alert, animated: true)
+    }
+    
+    private func save(_ taskName: String) {
+        guard let appDelegate = (UIApplication.shared.delegate as? AppDelegate) else { return }
+        let task = TodoTask(context: appDelegate.persistentContainer.viewContext)
+        task.title = taskName
+        taskList.append(task)
+        
+        let indexPath = IndexPath(row: taskList.count - 1, section: 0)
+        tableView.insertRows(at: [indexPath], with: .automatic)
+        
+        appDelegate.saveContext()
     }
 }
 
